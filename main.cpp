@@ -24,9 +24,16 @@ public:
     {
         return out<<name;
     } */
+    /* VAR2
     friend ostream &operator<<(ostream &out, const Item &obj)
     {
         out<<obj.getName(); // name is a private member, therefore i must use getName()
+        return out;
+    }*/
+    virtual void display(ostream& out) const = 0; // pure virtual function that is also defined in the derived classes
+    friend ostream &operator<<(ostream &out, const Item &obj) // overloading operator<< only in the base class
+    {
+        obj.display(out);
         return out;
     }
 };
@@ -38,7 +45,7 @@ private:
 public:
     File(const string &n, const string &ext, int s) : Item(n), extension(ext), size(s) {}
     File(const string &n, const string &ext) : Item(n), extension(ext) {}
-    const int &getSize() const
+    const int &getSize() const override
     {
         return size;
     }
@@ -47,15 +54,20 @@ public:
         return extension;
     }
     /* VAR1:
-    ostream& display(ostream& out) const
+    ostream& display(ostream& out) const override
     {
         return Item::display(out)<<"."<<extension<<" "<<size; // using scope resolution operator since we must access the method display() defined in the base class item
     }*/
+    /* VAR2
     friend ostream &operator<<(ostream &out, const File &obj)
     {
         out<<static_cast<const Item &>(obj); // upcasting since we must convert a derived class pointer to the base class pointer (any file has a name, which is an item's attribute)
         out<<"."<<obj.getExtension()<<" "<<obj.getSize();
         return out;
+    }*/
+    void display(ostream& out) const override
+    {
+        out<<getName()<<"."<<extension<<" "<<size;
     }
 };
 
@@ -128,7 +140,7 @@ public:
             out<<"|_"; // underscore = every other level of items contained in the parent's folder direct children
         }
     }
-    friend ostream &operator<<(ostream &out, const Directory &obj) // operator<< overloading
+    /* VAR 1/2: friend ostream &operator<<(ostream &out, const Directory &obj) // operator<< overloading
     {
         // the indentation is specific to every level, meaning it should be consistent for items within the same subdir
         static int k = 0; // static data since there are recursive calls within this function, meaning k must retain its value
@@ -145,12 +157,34 @@ public:
             {
                 obj.syntaxHelper(out, k);
                 // VAR1: item->display(out);
-                out<<*dynamic_cast<File *>(item); // !!! dereferencing + downcasting since we must convert a base class pointer to a derived class pointer
+                // VAR2: out<<*dynamic_cast<File *>(item); // !!! dereferencing + downcasting since we must convert a base class pointer to a derived class pointer
                 out<<endl;
             }
         }
         k -= 1; // returning to the parent directory, since it might have multiple children nodes, meaning the indentation will reset by exactly one position
         return out;
+    }*/
+    void display(ostream& out) const override
+    {
+        // the indentation is specific to every level, meaning it should be consistent for items within the same subdir
+        static int k = 0; // static data since there are recursive calls within this function, meaning k must retain its value
+        syntaxHelper(out, k);
+        out<<getName()<<endl;
+        k += 1; // descending into a subdir
+        for(const auto &item : path)
+        {
+            Directory *subdir = dynamic_cast<Directory*>(item);
+            if(subdir) // if it exists, it lists all of its items recursively
+            {
+                subdir->display(out); // !!! dereferencing the pointer
+            } else
+            {
+                syntaxHelper(out, k);
+                item->display(out);
+                out<<endl;
+            }
+        }
+        k -= 1; // returning to the parent directory, since it might have multiple children nodes, meaning the indentation will reset by exactly one position
     }
 };
 
@@ -169,11 +203,21 @@ int main() {
     Directory *bin = root.navigateTo("bin");
     bin->addItem(new File("program", "exe", 450));
 
+    /* VAR2 flaw: s remains of type item when dereferenced, not considering it might point to a derived class, therefore it won't display the directory and its other subdirectories
+    Item *s = bin;
+    cout<<*s<<endl;*/
+
+    Item *s = bin;
+    cout<<*s<<endl;
+
     cout<<root.getSize()<<endl;
     cout<<root.getNumberOfItems()<<endl;
     cout<<root;
     // item hierarchy
     /*
+     bin
+      |-program.exe 450
+
         570
         3
         /
