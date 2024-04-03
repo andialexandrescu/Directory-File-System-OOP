@@ -19,9 +19,15 @@ public:
     {
         return 0;
     }
+    /* VAR1:
     virtual ostream& display(ostream& out) const // in this case, the classes file and directory must display the assigned name, then a file must include other details
     {
         return out<<name;
+    } */
+    friend ostream &operator<<(ostream &out, const Item &obj)
+    {
+        out<<obj.getName(); // name is a private member, therefore i must use getName()
+        return out;
     }
 };
 
@@ -36,13 +42,20 @@ public:
     {
         return size;
     }
-    /*const string &getName() const // override
+    const string &getExtension() const
     {
-        return Item::getName()+"."+extension;
-    }*/
-    ostream& display(std::ostream& out) const
+        return extension;
+    }
+    /* VAR1:
+    ostream& display(ostream& out) const
     {
         return Item::display(out)<<"."<<extension<<" "<<size; // using scope resolution operator since we must access the method display() defined in the base class item
+    }*/
+    friend ostream &operator<<(ostream &out, const File &obj)
+    {
+        out<<static_cast<const Item &>(obj); // upcasting since we must convert a derived class pointer to the base class pointer (any file has a name, which is an item's attribute)
+        out<<"."<<obj.getExtension()<<" "<<obj.getSize();
+        return out;
     }
 };
 
@@ -115,7 +128,7 @@ public:
             out<<"|_"; // underscore = every other level of items contained in the parent's folder direct children
         }
     }
-    friend std::ostream &operator<<(std::ostream &out, const Directory &obj) // operator<< overloading
+    friend ostream &operator<<(ostream &out, const Directory &obj) // operator<< overloading
     {
         // the indentation is specific to every level, meaning it should be consistent for items within the same subdir
         static int k = 0; // static data since there are recursive calls within this function, meaning k must retain its value
@@ -131,7 +144,8 @@ public:
             } else
             {
                 obj.syntaxHelper(out, k);
-                item->display(out);
+                // VAR1: item->display(out);
+                out<<*dynamic_cast<File *>(item); // !!! dereferencing + downcasting since we must convert a base class pointer to a derived class pointer
                 out<<endl;
             }
         }
@@ -160,12 +174,16 @@ int main() {
     cout<<root;
     // item hierarchy
     /*
+        570
+        3
         /
-        |-bin
-        |-home
+         |-bin
+          |_program.exe 450
+         |-home
           |_tim
-            |_info.txt 100
-            |_data.in 0
-            |_data
+           |_info.txt 100
+           |_data.in 0
+           |_data
+         |-image1.png 20
     */
 }
